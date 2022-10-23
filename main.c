@@ -3,7 +3,7 @@ Segundo Trabalho Prático - Organização e recuperação de dados
 Alunos:
 William Kenzo Tsutumi        RA: 124706
 Nicolas Hess de Farina Alves RA:
-Mateus Hamada                RA:
+Matheus Hamada               RA: 124101
 */
 
 #include <stdio.h>
@@ -12,10 +12,21 @@ Mateus Hamada                RA:
 
 #define TAM_MAX_BUCKET 2
 
+typedef struct Bucket{
+    int prof;
+    int cont;
+    char *chave[TAM_MAX_BUCKET];
+} Bucket;
+
+typedef struct DIR_CELL{
+    int bucket_ref;
+} DIR_CELL;
+
 void importa_chaves(char *);
 void imprime_buckets();
 void imprime_diretorio();
-
+int hash(char *key[], int maxaddr);
+void make_address(char *key[], int profundidade);
 //******************************************************
 
 int main(int argc, char *argv[])
@@ -73,4 +84,36 @@ void imprime_buckets()
 void imprime_diretorio()
 {
 
+}
+
+int hash(char *key[], int maxaddr)
+{
+    short int sum = 0;
+    int i = 0;
+
+    while (key[i] != '\r')
+    {
+        sum = (sum + 100 * (int)key[i] + (int)key[i + 1]) % maxaddr;
+        i = i + 2;
+    }
+
+    return (sum % maxaddr);
+}
+
+void make_address(char *key[], int profundidade)
+{
+    int retval = 0;
+    int lowbit = 0;
+    int mask = 1;
+    short int hashval = hash(key, profundidade);
+
+    for (int i = 0; i < profundidade; i++)
+    {
+        retval = retval << 1;
+        lowbit = hashval & mask;
+        retval = retval | lowbit;
+        hashval = hashval >> 1;
+    }
+
+    return retval;
 }
