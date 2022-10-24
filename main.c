@@ -12,6 +12,7 @@ Matheus Hamada               RA: 124101
 
 #define TAM_MAX_BUCKET 2
 #define TAM_MAX_DIR 1024
+#define TAM_MAX_CHAVE 255
 #define SUCCESS 1
 #define FAILURE 0
 
@@ -34,12 +35,12 @@ int hash(char *key, int maxaddr);
 int make_address(char *key, int profundidade);
 int op_add(char *key);
 int op_find(char *key, Bucket *found_bucket);
+void bk_add_key(char *key, Bucket *found_bucket);
 
 //******************************************************
 
 DIR_CELL dir_cell[TAM_MAX_DIR];
-int dir_prof = 1;
-FILE *chaves;
+int dir_prof = 0;
 FILE *diretorio;
 FILE *buckets;
 
@@ -81,13 +82,15 @@ int main(int argc, char *argv[])
 
 void importa_chaves(char *nome_arquivo)
 {
-    chaves = fopen(nome_arquivo, "rb+");
+    FILE *chaves;
+    chaves = fopen(nome_arquivo, "r");
+
+    char buffer_chave[TAM_MAX_CHAVE];
 
     while (!feof(chaves))
     {
-        char key[3];
-        fgets(key, 3, chaves);
-        op_add(key);
+        fgets(buffer_chave, TAM_MAX_CHAVE, chaves);
+        op_add(buffer_chave);
     }
 
     fclose(chaves);
@@ -140,7 +143,7 @@ int make_address(char *key, int profundidade)
         hashval = hashval >> 1;
     }
 
-    return retval;
+    return retval;//(profundidade)*bits de trás para frente(hashval)
 }
 
 //******************************************************
@@ -151,7 +154,7 @@ int op_add(char *key)
     if (op_find(key, &found_bucket) == SUCCESS)
         return FAILURE;
 
-    bk_add_key(key, found_bucket);
+    //bk_add_key(key, &found_bucket);
     return SUCCESS;
 }
 
@@ -159,9 +162,8 @@ int op_add(char *key)
 
 int op_find(char *key, Bucket *found_bucket)
 {
-    int size = sizeof(dir_cell) / sizeof(dir_cell[0]);
     // essa func tem que receber a profundidade do dir_cell?
-    int address = make_address(key, size);
+    int address = make_address(key, dir_prof);
     // Lendo o bucket no arquivo
     fseek(buckets, dir_cell[address].bucket_ref, SEEK_SET);
     fread(&(found_bucket->prof), sizeof(int), 1, buckets);
