@@ -11,22 +11,38 @@ Matheus Hamada               RA: 124101
 #include <stdlib.h>
 
 #define TAM_MAX_BUCKET 2
+#define TAM_MAX_DIR 1024
+#define SUCCESS 1
+#define FAILURE 0
 
-typedef struct Bucket{
+typedef struct Bucket
+{
     int prof;
     int cont;
     char *chave[TAM_MAX_BUCKET];
 } Bucket;
 
-typedef struct DIR_CELL{
+typedef struct DIR_CELL
+{
     int bucket_ref;
 } DIR_CELL;
 
 void importa_chaves(char *);
 void imprime_buckets();
 void imprime_diretorio();
-int hash(char *key[], int maxaddr);
-void make_address(char *key[], int profundidade);
+int hash(char *key, int maxaddr);
+int make_address(char *key, int profundidade);
+int op_add(char *key);
+int op_find(char *key, Bucket *found_bucket);
+
+//******************************************************
+
+DIR_CELL dir_cell[TAM_MAX_DIR];
+int dir_prof = 1;
+FILE *chaves;
+FILE *diretorio;
+FILE *buckets;
+
 //******************************************************
 
 int main(int argc, char *argv[])
@@ -63,13 +79,18 @@ int main(int argc, char *argv[])
 
 //******************************************************
 
-void importa_chaves(char * nome_arquivo)
+void importa_chaves(char *nome_arquivo)
 {
-    FILE * arq = fopen(nome_arquivo, "rb+");
+    chaves = fopen(nome_arquivo, "rb+");
 
-    //putaquepariutemmuitopseudocodigopraimplementar
+    while (!feof(chaves))
+    {
+        char key[3];
+        fgets(key, 3, chaves);
+        op_add(key);
+    }
 
-    fclose(arq);
+    fclose(chaves);
 }
 
 //******************************************************
@@ -86,7 +107,9 @@ void imprime_diretorio()
 
 }
 
-int hash(char *key[], int maxaddr)
+//******************************************************
+
+int hash(char *key, int maxaddr)
 {
     short int sum = 0;
     int i = 0;
@@ -100,7 +123,9 @@ int hash(char *key[], int maxaddr)
     return (sum % maxaddr);
 }
 
-void make_address(char *key[], int profundidade)
+//******************************************************
+
+int make_address(char *key, int profundidade)
 {
     int retval = 0;
     int lowbit = 0;
@@ -116,4 +141,41 @@ void make_address(char *key[], int profundidade)
     }
 
     return retval;
+}
+
+//******************************************************
+
+int op_add(char *key)
+{
+    Bucket found_bucket;
+    if (op_find(key, &found_bucket) == SUCCESS)
+        return FAILURE;
+
+    bk_add_key(key, found_bucket);
+    return SUCCESS;
+}
+
+//******************************************************
+
+int op_find(char *key, Bucket *found_bucket)
+{
+    int size = sizeof(dir_cell) / sizeof(dir_cell[0]);
+    // essa func tem que receber a profundidade do dir_cell?
+    int address = make_address(key, size);
+    // Lendo o bucket no arquivo
+    fseek(buckets, dir_cell[address].bucket_ref, SEEK_SET);
+    fread(&(found_bucket->prof), sizeof(int), 1, buckets);
+    fread(&(found_bucket->cont), sizeof(int), 1, buckets);
+
+    int num_chaves = found_bucket->cont;
+    for (int i = 0; i < num_chaves; i++)
+        fread(&(found_bucket->chave[i]), sizeof(char *), 1, buckets);
+
+    // Procurando pela chave
+    for (int i = 0; i < num_chaves; i++)
+    {
+        if (strcmp(found_bucket->chave[i], key) == 0)
+            return FAILURE;
+    }
+    return SUCCESS;
 }
