@@ -2,7 +2,7 @@
 Segundo Trabalho Prático - Organização e recuperação de dados
 Alunos:
 William Kenzo Tsutumi        RA: 124706
-Nicolas Hess de Farina Alves RA:
+Nicolas Hess de Farina Alves RA: 125623
 Matheus Hamada               RA: 124101
 */
 
