@@ -39,7 +39,7 @@ int op_find(char *key, Bucket *found_bucket);
 void bk_add_key(char *key, Bucket *found_bucket);
 void bk_split(Bucket *found_bucket);
 void inicializacao();
-
+void finalizacao();
 //******************************************************
 
 DIR_CELL dir_cell[TAM_MAX_DIR];
@@ -211,10 +211,77 @@ void bk_add_key(char *key, Bucket *found_bucket){
 */
 void bk_split(Bucket *found_bucket)
 {
+    if(found_bucket->prof == dir_prof)
+        dir_double();
 
+    Bucket new_bucket;
+
+    new_bucket.prof = found_bucket->prof + 1;
+
+    int new_start = make_address(found_bucket->chave[0], new_bucket.prof);
+    int new_end = make_address(found_bucket->chave[0], new_bucket.prof + 1);
+    int end_new_bucket = new_end - 1;
+
+    find_new_range(found_bucket, new_start, new_end);
+    dir_ins_bucket(end_new_bucket,new_start,new_end);
+
+    found_bucket->prof + 1;
+
+    new_bucket.prof = found_bucket->prof;
+
+    for (int i = 0; i < TAM_MAX_BUCKET; i++)
+    {
+        if (make_address(found_bucket->chave[i], found_bucket->prof) == new_start)
+        {
+            bk_add_key(found_bucket->chave[i], &new_bucket);
+            found_bucket->chave[i] = NULL;
+            found_bucket->cont--;
+        }
+    }
 }
 
+void dir_double()
+{
+    int tam_atual = pow(2, dir_prof);
+    int tam_novo = tam_atual * 2;
+
+    
+    
+    for (int i = 0; i < tam_atual; i++)
+    {
+        dir_cell[tam_novo - i - 1] = dir_cell[tam_atual - i - 1];
+        dir_cell[tam_atual - i - 1] = dir_cell[tam_atual - i - 1];
+    }   
+}
+
+void find_new_range(Bucket *old_bucket, int *new_start, int *new_end)
+{
+    int mask = 1;
+    int *shared_address = make_address(old_bucket->chave[0], old_bucket->prof);
+    
+    *shared_address = *shared_address << 1;
+    *shared_address = *shared_address | mask;
+
+    int bits_to_fill = dir_prof - (old_bucket->prof + 1);
+
+    *new_start = *new_end = *shared_address;
+
+    for(int i = 0; i < bits_to_fill; i++)
+    {
+        *new_start = *new_start << 1;
+        *new_end = *new_end << 1;
+        *new_end = *new_end | mask;
+    }
+}
 //******************************************************
+
+void dir_ins_bucket(int bucket_address, int start, int end)
+{
+    for(int i = start; i <= end; i++)
+    {
+        dir_cell[i].bucket_ref = bucket_address;
+    }
+}
 
 /*
 *   Inicializa os arquivos dir.dat e buckets.dat
