@@ -9,6 +9,7 @@ Matheus Hamada               RA: 124101
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 
 #define TAM_MAX_BUCKET 2
 #define TAM_MAX_DIR 1024
@@ -36,11 +37,13 @@ int make_address(char *key, int profundidade);
 int op_add(char *key);
 int op_find(char *key, Bucket *found_bucket);
 void bk_add_key(char *key, Bucket *found_bucket);
+void bk_split(Bucket *found_bucket);
+void inicializacao();
 
 //******************************************************
 
 DIR_CELL dir_cell[TAM_MAX_DIR];
-int dir_prof = 0;
+int dir_prof;
 FILE *diretorio;
 FILE *buckets;
 
@@ -48,6 +51,7 @@ FILE *buckets;
 
 int main(int argc, char *argv[])
 {
+    inicializacao();
     // Importação
     if (argc == 3 && strcmp(argv[1], "-i") == 0)
     {
@@ -75,6 +79,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "$ ./%s -pd/-pb\n", argv[0]);
         exit(EXIT_FAILURE);
     }
+    finalizacao();
     return 0;
 }
 
@@ -154,7 +159,7 @@ int op_add(char *key)
     if (op_find(key, &found_bucket) == SUCCESS)
         return FAILURE;
 
-    //bk_add_key(key, &found_bucket);
+    bk_add_key(key, &found_bucket);
     return SUCCESS;
 }
 
@@ -180,4 +185,103 @@ int op_find(char *key, Bucket *found_bucket)
             return FAILURE;
     }
     return SUCCESS;
+}
+
+//******************************************************
+
+/*
+*   
+*/
+void bk_add_key(char *key, Bucket *found_bucket){
+    if (found_bucket -> cont < TAM_MAX_BUCKET)
+    {
+        //fwrite(key, sizeof(char), 1, buckets); certo?/errado? -> insira key em bucket
+    }
+    else
+    {
+        bk_split(found_bucket);
+        op_add(key);
+    }
+}
+
+//******************************************************
+
+/*
+*
+*/
+void bk_split(Bucket *found_bucket)
+{
+
+}
+
+//******************************************************
+
+/*
+*   Inicializa os arquivos dir.dat e buckets.dat
+*   Se existir dir.dat -> importa o vetor de diretórios(dir_cell)
+*   Senão, cria um vetor novo e os arquivos dir.dat e buckets.dat
+*/
+void inicializacao()
+{
+    diretorio = fopen("dir.dat", "rb+");
+
+    if(diretorio != NULL)
+    {
+        buckets = fopen("buckets.dat", "rb+");
+
+        if(buckets == NULL){
+            fprintf(stderr, ">> Erro: Falha na leitura do arquivo: buckets.dat\n");
+            exit(1);
+        }    
+
+        int i;
+
+        for (i = 0; feof(diretorio); i++)
+        {
+            fread(&dir_cell[i], sizeof(DIR_CELL), 1, diretorio);
+        }
+
+        i++;
+
+        dir_prof = log2(i);    
+    }
+    else
+    {
+        DIR_CELL celula;
+        celula.bucket_ref = 0;
+
+        dir_cell[0] = celula;
+
+        dir_prof = 0;
+
+        buckets = fopen("buckets.dat", "wb+");
+
+        Bucket buck;
+        buck.prof = 0;
+        buck.cont = 0;
+        
+        fwrite(&buck, sizeof(Bucket), 1, buckets);  
+
+        diretorio = fopen("dir.dat", "wb+");
+    }
+}
+
+//******************************************************
+
+/*
+*   Escreve o vetor de diretórios(dir_cell) no arquivo dir.dat
+*/
+void finalizacao()
+{
+    int dir_cont = pow(2, dir_prof);
+
+    fseek(diretorio, 0, SEEK_SET);
+
+    for (int i = 0; i < dir_cont; i++)
+    {
+        fwrite(&dir_cell[i], sizeof(DIR_CELL), 1, diretorio);
+    }
+    
+    fclose(diretorio);
+    fclose(buckets);
 }
