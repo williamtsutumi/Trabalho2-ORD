@@ -282,6 +282,7 @@ void dir_double()
         novo_dir[2 * i].bucket_ref = dir_cell[i].bucket_ref;
         novo_dir[2 * i + 1].bucket_ref = dir_cell[i].bucket_ref;
     }
+    free(dir_cell);
     dir_cell = novo_dir;
     dir_prof++;
 }
