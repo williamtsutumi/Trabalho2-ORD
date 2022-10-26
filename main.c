@@ -38,12 +38,17 @@ int op_add(char *key);
 int op_find(char *key, Bucket *found_bucket);
 void bk_add_key(char *key, Bucket *found_bucket);
 void bk_split(Bucket *found_bucket);
+void find_new_range(Bucket *old_bucket, int new_start, int new_end);
+void dir_ins_bucket(int bucket_address, int start, int end);
+void dir_double();
 void inicializacao();
 void finalizacao();
 //******************************************************
 
-DIR_CELL dir_cell[TAM_MAX_DIR];
-int dir_prof;
+DIR_CELL *dir_cell;
+Bucket all_buckets[TAM_MAX_DIR];
+int num_buckets = 0;
+int dir_prof = 0;
 FILE *diretorio;
 FILE *buckets;
 
@@ -91,11 +96,29 @@ void importa_chaves(char *nome_arquivo)
     chaves = fopen(nome_arquivo, "r");
 
     char buffer_chave[TAM_MAX_CHAVE];
-
+    // Colocando os buckets em memória
     while (!feof(chaves))
     {
         fgets(buffer_chave, TAM_MAX_CHAVE, chaves);
         op_add(buffer_chave);
+    }
+    // Colocando os buckets no arquivo
+    int num_buckets = pow(2, dir_prof);
+    printf("Escrevendo os buckets em buckets.dat\n");
+    printf("Escrevendo o diretorio em dir.dat\n");
+    printf("%d\n", num_buckets);
+    for (int i = 0; i < num_buckets; i++)
+    {
+        fwrite(&(dir_cell[i].bucket_ref), sizeof(int), 1, diretorio);
+        if (i == num_buckets - 1 || dir_cell[i].bucket_ref != dir_cell[i + 1].bucket_ref)
+        {
+            int idx = dir_cell[i].bucket_ref;
+            fwrite(&idx, sizeof(int), 1, diretorio);
+            fwrite(&(all_buckets[i].prof), sizeof(int), 1, buckets);
+            fwrite(&(all_buckets[i].cont), sizeof(int), 1, buckets);
+            for (int j = 0; j < all_buckets[i].cont; j++)
+                fwrite(all_buckets[i].chave[j], sizeof(int), 1, buckets);
+        }
     }
 
     fclose(chaves);
@@ -105,14 +128,12 @@ void importa_chaves(char *nome_arquivo)
 
 void imprime_buckets()
 {
-
 }
 
 //******************************************************
 
 void imprime_diretorio()
 {
-
 }
 
 //******************************************************
@@ -124,10 +145,10 @@ int hash(char *key, int maxaddr)
 
     while (key[i] != '\r')
     {
+        printf("%d\n", 1);
         sum = (sum + 100 * (int)key[i] + (int)key[i + 1]) % maxaddr;
         i = i + 2;
     }
-
     return (sum % maxaddr);
 }
 
@@ -148,7 +169,7 @@ int make_address(char *key, int profundidade)
         hashval = hashval >> 1;
     }
 
-    return retval;//(profundidade)*bits de trás para frente(hashval)
+    return retval; //(profundidade)*bits de trás para frente(hashval)
 }
 
 //******************************************************
@@ -167,7 +188,6 @@ int op_add(char *key)
 
 int op_find(char *key, Bucket *found_bucket)
 {
-    // essa func tem que receber a profundidade do dir_cell?
     int address = make_address(key, dir_prof);
     // Lendo o bucket no arquivo
     fseek(buckets, dir_cell[address].bucket_ref, SEEK_SET);
@@ -189,13 +209,22 @@ int op_find(char *key, Bucket *found_bucket)
 
 //******************************************************
 
-/*
-*   
-*/
-void bk_add_key(char *key, Bucket *found_bucket){
-    if (found_bucket -> cont < TAM_MAX_BUCKET)
+/**
+ *  Adiciona key em found_bucket, caso haja espaço
+ *  Caso contrário, nao sei
+ *
+ *
+ *
+ */
+void bk_add_key(char *key, Bucket *found_bucket)
+{
+    int cont = found_bucket->cont;
+    if (cont < TAM_MAX_BUCKET)
     {
-        //fwrite(key, sizeof(char), 1, buckets); certo?/errado? -> insira key em bucket
+        found_bucket->chave[cont] = key;
+        found_bucket->cont++;
+        // fwrite(key, sizeof(char), 1, buckets); certo?/errado? -> insira key em bucket
+        // Acho que tem que mecher só em memória aqui
     }
     else
     {
@@ -207,11 +236,11 @@ void bk_add_key(char *key, Bucket *found_bucket){
 //******************************************************
 
 /*
-*
-*/
+ *
+ */
 void bk_split(Bucket *found_bucket)
 {
-    if(found_bucket->prof == dir_prof)
+    if (found_bucket->prof == dir_prof)
         dir_double();
 
     Bucket new_bucket;
@@ -223,7 +252,7 @@ void bk_split(Bucket *found_bucket)
     int end_new_bucket = new_end - 1;
 
     find_new_range(found_bucket, new_start, new_end);
-    dir_ins_bucket(end_new_bucket,new_start,new_end);
+    dir_ins_bucket(end_new_bucket, new_start, new_end);
 
     found_bucket->prof + 1;
 
@@ -238,68 +267,72 @@ void bk_split(Bucket *found_bucket)
             found_bucket->cont--;
         }
     }
+    all_buckets[num_buckets] = new_bucket;
+    num_buckets++;
 }
 
 void dir_double()
 {
     int tam_atual = pow(2, dir_prof);
     int tam_novo = tam_atual * 2;
+    DIR_CELL *novo_dir = (DIR_CELL *)malloc(sizeof(DIR_CELL) * tam_novo);
 
-    
-    
     for (int i = 0; i < tam_atual; i++)
     {
-        dir_cell[tam_novo - i - 1] = dir_cell[tam_atual - i - 1];
-        dir_cell[tam_atual - i - 1] = dir_cell[tam_atual - i - 1];
-    }   
+        novo_dir[2 * i].bucket_ref = dir_cell[i].bucket_ref;
+        novo_dir[2 * i + 1].bucket_ref = dir_cell[i].bucket_ref;
+    }
+    dir_cell = novo_dir;
+    dir_prof++;
 }
 
-void find_new_range(Bucket *old_bucket, int *new_start, int *new_end)
+void find_new_range(Bucket *old_bucket, int new_start, int new_end)
 {
     int mask = 1;
-    int *shared_address = make_address(old_bucket->chave[0], old_bucket->prof);
-    
-    *shared_address = *shared_address << 1;
-    *shared_address = *shared_address | mask;
+    int shared_address = make_address(old_bucket->chave[0], old_bucket->prof);
+
+    shared_address = shared_address << 1;
+    shared_address = shared_address | mask;
 
     int bits_to_fill = dir_prof - (old_bucket->prof + 1);
 
-    *new_start = *new_end = *shared_address;
+    new_start = new_end = shared_address;
 
-    for(int i = 0; i < bits_to_fill; i++)
+    for (int i = 0; i < bits_to_fill; i++)
     {
-        *new_start = *new_start << 1;
-        *new_end = *new_end << 1;
-        *new_end = *new_end | mask;
+        new_start = new_start << 1;
+        new_end = new_end << 1;
+        new_end = new_end | mask;
     }
 }
 //******************************************************
 
 void dir_ins_bucket(int bucket_address, int start, int end)
 {
-    for(int i = start; i <= end; i++)
+    for (int i = start; i <= end; i++)
     {
         dir_cell[i].bucket_ref = bucket_address;
     }
 }
 
 /*
-*   Inicializa os arquivos dir.dat e buckets.dat
-*   Se existir dir.dat -> importa o vetor de diretórios(dir_cell)
-*   Senão, cria um vetor novo e os arquivos dir.dat e buckets.dat
-*/
+ *   Inicializa os arquivos dir.dat e buckets.dat
+ *   Se existir dir.dat -> importa o vetor de diretórios(dir_cell)
+ *   Senão, cria um vetor novo e os arquivos dir.dat e buckets.dat
+ */
 void inicializacao()
 {
     diretorio = fopen("dir.dat", "rb+");
 
-    if(diretorio != NULL)
+    if (diretorio != NULL)
     {
         buckets = fopen("buckets.dat", "rb+");
 
-        if(buckets == NULL){
+        if (buckets == NULL)
+        {
             fprintf(stderr, ">> Erro: Falha na leitura do arquivo: buckets.dat\n");
             exit(1);
-        }    
+        }
 
         int i;
 
@@ -310,7 +343,7 @@ void inicializacao()
 
         i++;
 
-        dir_prof = log2(i);    
+        dir_prof = log2(i);
     }
     else
     {
@@ -319,15 +352,13 @@ void inicializacao()
 
         dir_cell[0] = celula;
 
-        dir_prof = 0;
-
         buckets = fopen("buckets.dat", "wb+");
 
         Bucket buck;
         buck.prof = 0;
         buck.cont = 0;
-        
-        fwrite(&buck, sizeof(Bucket), 1, buckets);  
+
+        fwrite(&buck, sizeof(Bucket), 1, buckets);
 
         diretorio = fopen("dir.dat", "wb+");
     }
@@ -336,8 +367,8 @@ void inicializacao()
 //******************************************************
 
 /*
-*   Escreve o vetor de diretórios(dir_cell) no arquivo dir.dat
-*/
+ *   Escreve o vetor de diretórios(dir_cell) no arquivo dir.dat
+ */
 void finalizacao()
 {
     int dir_cont = pow(2, dir_prof);
@@ -348,7 +379,7 @@ void finalizacao()
     {
         fwrite(&dir_cell[i], sizeof(DIR_CELL), 1, diretorio);
     }
-    
+
     fclose(diretorio);
     fclose(buckets);
 }
