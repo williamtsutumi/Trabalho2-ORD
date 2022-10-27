@@ -33,7 +33,7 @@ typedef struct DIR_CELL
 void importa_chaves(char *);
 void imprime_buckets();
 void imprime_diretorio();
-int hash(int);
+int hash(int, int);
 int make_address(int, int);
 int op_add(int);
 int op_find(int, Bucket *found_bucket);
@@ -135,14 +135,21 @@ void imprime_buckets()
 
 void imprime_diretorio()
 {
+    DIR_CELL n;
+    while (!feof(diretorio))
+    {
+        if(fread(&n, sizeof(DIR_CELL), 1, diretorio) == 0)
+            break;
+        printf("%d ", n.bucket_ref);
+    }
 }
 
 //******************************************************
 
-int hash(int key)
+int hash(int key, int maxaddr)
 {
-    int sum = 0;//inteiro sem sinal?? uint
-    sum = key % 8;
+    short int sum = 0;//inteiro sem sinal?? uint
+    sum = key % maxaddr;
     return (sum);
 }
 
@@ -153,7 +160,7 @@ int make_address(int key, int profundidade)
     int lowbit;
     int retval = 0;
     int mask = 1;
-    int hashval = hash(key);
+    int hashval = hash(key, pow(2, profundidade));
 
     for (int i = 0; i < profundidade; i++)
     {
