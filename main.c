@@ -117,7 +117,8 @@ void imprime_buckets()
     Bucket n;
     while (!feof(buckets))
     {
-        fread(&n, sizeof(Bucket), 1, buckets);
+        if(fread(&n, sizeof(Bucket), 1, buckets) == 0)
+            break;
         for (int i = 0; i < n.cont; i++)
         {
             printf("%d ", n.chave[i]);
@@ -139,7 +140,7 @@ void imprime_diretorio()
 int hash(int key)
 {
     int sum = 0;//inteiro sem sinal?? uint
-    sum = (sum + 100 * key);
+    sum = key % 8;
     return (sum);
 }
 
