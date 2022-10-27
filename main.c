@@ -57,22 +57,24 @@ FILE *buckets;
 
 int main(int argc, char *argv[])
 {
-    inicializacao();
     // Importação
     if (argc == 3 && strcmp(argv[1], "-i") == 0)
     {
+        inicializacao();
         printf("Modo de importacao ativado ... nome do arquivo = %s\n", argv[2]);
         importa_chaves(argv[2]);
     }
     // Impressão das informações do diretório
     else if (argc == 2 && strcmp(argv[1], "-pd") == 0)
     {
+        inicializacao();
         printf("Modo de impressao do diretorio ...\n");
         imprime_diretorio();
     }
     // Impressão das informações dos buckets
     else if (argc == 2 && strcmp(argv[1], "-pb") == 0)
     {
+        inicializacao();
         printf("Modo de impressao dos buckets ...\n");
         imprime_buckets();
     }
