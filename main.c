@@ -47,8 +47,8 @@ void finalizacao();
 //******************************************************
 
 DIR_CELL dir_cell[TAM_MAX_DIR];
-//Bucket all_buckets[TAM_MAX_DIR];
-//int num_buckets = 0;
+// Bucket all_buckets[TAM_MAX_DIR];
+// int num_buckets = 0;
 int dir_prof = 0;
 FILE *diretorio;
 FILE *buckets;
@@ -117,38 +117,38 @@ void importa_chaves(char *nome_arquivo)
 void imprime_buckets()
 {
     Bucket n;
+
     while (!feof(buckets))
     {
-        if(fread(&n, sizeof(Bucket), 1, buckets) == 0)
+        if (fread(&n, sizeof(Bucket), 1, buckets) == 0)
             break;
+
+        printf("Bucket %d (Prof = %d)\n", ftell(buckets) / sizeof(Bucket) - 1,  n.prof);
         for (int i = 0; i < n.cont; i++)
         {
-            printf("%d ", n.chave[i]);
+            printf("Chave [%d] = %d\n", i, n.chave[i]);
         }
         printf("\n");
-        
     }
-    
 }
 
 //******************************************************
 
 void imprime_diretorio()
 {
-    DIR_CELL n;
-    while (!feof(diretorio))
+    // print the diretory
+    for (int i = 0; i < pow(2, dir_prof); i++)
     {
-        if(fread(&n, sizeof(DIR_CELL), 1, diretorio) == 0)
-            break;
-        printf("%d ", n.bucket_ref);
+        printf("dir[%d] = bucket(%d)\n", i, dir_cell[i].bucket_ref);
     }
+    printf("\n");
 }
 
 //******************************************************
 
 int hash(int key, int maxaddr)
 {
-    short int sum = 0;//inteiro sem sinal?? uint
+    short int sum = 0; // inteiro sem sinal?? uint
     sum = key % maxaddr;
     return (sum);
 }
@@ -239,11 +239,11 @@ void bk_split(Bucket *found_bucket)
         dir_double();
 
     Bucket new_bucket;
-    new_bucket.cont  = 0;
+    new_bucket.cont = 0;
 
     for (int i = 0; i < TAM_MAX_BUCKET; i++)
         new_bucket.chave[i] = NULL;
-    
+
     fseek(buckets, -sizeof(Bucket), SEEK_CUR);
     int cur_bucket = ftell(buckets);
 
@@ -258,8 +258,8 @@ void bk_split(Bucket *found_bucket)
     find_new_range(found_bucket, &new_start, &new_end);
     dir_ins_bucket(end_new_bucket, new_start, new_end);
 
-    (*found_bucket).prof ++;
-    new_bucket.prof = found_bucket -> prof;
+    (*found_bucket).prof++;
+    new_bucket.prof = found_bucket->prof;
 
     for (int i = 0; i < TAM_MAX_BUCKET; i++)
     {
@@ -272,11 +272,12 @@ void bk_split(Bucket *found_bucket)
                 new_bucket.chave[new_bucket.cont] = (*found_bucket).chave[i];
                 new_bucket.cont++;
                 (*found_bucket).chave[i] = NULL;
-                if (i < (*found_bucket).cont - 1){
+                if (i < (*found_bucket).cont - 1)
+                {
                     for (int j = i; j < (*found_bucket).cont - 1; j++)
                     {
-                        (*found_bucket).chave[j] = (*found_bucket).chave[j+1];
-                    }   
+                        (*found_bucket).chave[j] = (*found_bucket).chave[j + 1];
+                    }
                 }
                 (*found_bucket).cont--;
             }
@@ -284,7 +285,7 @@ void bk_split(Bucket *found_bucket)
     }
 
     fwrite(&new_bucket, sizeof(Bucket), 1, buckets);
-    
+
     fseek(buckets, cur_bucket, SEEK_SET);
     fwrite(found_bucket, sizeof(Bucket), 1, buckets);
 }
@@ -293,7 +294,7 @@ void dir_double()
 {
     int tam_atual = pow(2, dir_prof);
     int tam_novo = tam_atual * 2;
-    //DIR_CELL *new_dir_cell = (DIR_CELL *)malloc(sizeof(DIR_CELL) * tam_novo);
+    // DIR_CELL *new_dir_cell = (DIR_CELL *)malloc(sizeof(DIR_CELL) * tam_novo);
     DIR_CELL new_dir_cell[tam_novo];
 
     for (int i = 0; i < tam_atual; i++)
@@ -301,7 +302,7 @@ void dir_double()
         new_dir_cell[2 * i].bucket_ref = dir_cell[i].bucket_ref;
         new_dir_cell[2 * i + 1].bucket_ref = dir_cell[i].bucket_ref;
     }
-    //dir_cell = new_dir_cell;
+    // dir_cell = new_dir_cell;
     for (int i = 0; i < tam_novo; i++)
     {
         dir_cell[i].bucket_ref = new_dir_cell[i].bucket_ref;
@@ -312,7 +313,7 @@ void dir_double()
 void find_new_range(Bucket *old_bucket, int *new_start, int *new_end)
 {
     int mask = 1;
-    
+
     int shared_address = make_address((*old_bucket).chave[0], (*old_bucket).prof);
 
     shared_address = shared_address << 1;
@@ -367,7 +368,7 @@ void inicializacao()
             fread(&dir_cell[i], sizeof(dir_cell[i]), 1, diretorio);
         }
 
-        i --;
+        i--;
 
         dir_prof = log2(i);
     }
