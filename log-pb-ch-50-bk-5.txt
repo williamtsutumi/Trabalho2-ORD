@@ -1,0 +1,112 @@
+----- Buckets -----
+Bucket 0 (Prof = 4):
+Chave[0] = 16
+Chave[1] = 32
+Chave[2] = 48
+Chave[3] = -1
+Chave[4] = -1
+
+Bucket 1 (Prof = 4):
+Chave[0] = 1
+Chave[1] = 17
+Chave[2] = 33
+Chave[3] = 49
+Chave[4] = -1
+
+Bucket 2 (Prof = 4):
+Chave[0] = 3
+Chave[1] = 19
+Chave[2] = 35
+Chave[3] = -1
+Chave[4] = -1
+
+Bucket 3 (Prof = 4):
+Chave[0] = 2
+Chave[1] = 18
+Chave[2] = 34
+Chave[3] = 50
+Chave[4] = -1
+
+Bucket 4 (Prof = 4):
+Chave[0] = 5
+Chave[1] = 21
+Chave[2] = 37
+Chave[3] = -1
+Chave[4] = -1
+
+Bucket 5 (Prof = 4):
+Chave[0] = 6
+Chave[1] = 22
+Chave[2] = 38
+Chave[3] = -1
+Chave[4] = -1
+
+Bucket 6 (Prof = 4):
+Chave[0] = 7
+Chave[1] = 23
+Chave[2] = 39
+Chave[3] = -1
+Chave[4] = -1
+
+Bucket 7 (Prof = 4):
+Chave[0] = 4
+Chave[1] = 20
+Chave[2] = 36
+Chave[3] = -1
+Chave[4] = -1
+
+Bucket 8 (Prof = 4):
+Chave[0] = 9
+Chave[1] = 25
+Chave[2] = 41
+Chave[3] = -1
+Chave[4] = -1
+
+Bucket 9 (Prof = 4):
+Chave[0] = 10
+Chave[1] = 26
+Chave[2] = 42
+Chave[3] = -1
+Chave[4] = -1
+
+Bucket 10 (Prof = 4):
+Chave[0] = 11
+Chave[1] = 27
+Chave[2] = 43
+Chave[3] = -1
+Chave[4] = -1
+
+Bucket 11 (Prof = 4):
+Chave[0] = 12
+Chave[1] = 28
+Chave[2] = 44
+Chave[3] = -1
+Chave[4] = -1
+
+Bucket 12 (Prof = 4):
+Chave[0] = 13
+Chave[1] = 29
+Chave[2] = 45
+Chave[3] = -1
+Chave[4] = -1
+
+Bucket 13 (Prof = 4):
+Chave[0] = 14
+Chave[1] = 30
+Chave[2] = 46
+Chave[3] = -1
+Chave[4] = -1
+
+Bucket 14 (Prof = 4):
+Chave[0] = 15
+Chave[1] = 31
+Chave[2] = 47
+Chave[3] = -1
+Chave[4] = -1
+
+Bucket 15 (Prof = 4):
+Chave[0] = 8
+Chave[1] = 24
+Chave[2] = 40
+Chave[3] = -1
+Chave[4] = -1
