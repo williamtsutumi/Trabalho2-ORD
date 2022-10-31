@@ -12,7 +12,7 @@ Matheus Hamada               RA: 124101
 #include <math.h>
 #include <stdbool.h>
 
-#define TAM_MAX_BUCKET 5
+#define TAM_MAX_BUCKET 2
 #define TAM_MAX_DIR 1024
 #define TAM_MAX_CHAVE 255
 #define SUCCESS 1
@@ -47,6 +47,8 @@ void finalizacao();
 //******************************************************
 
 DIR_CELL dir_cell[TAM_MAX_DIR];
+// Bucket all_buckets[TAM_MAX_DIR];
+// int num_buckets = 0;
 int dir_prof = 0;
 FILE *diretorio;
 FILE *buckets;
@@ -146,7 +148,9 @@ void imprime_diretorio()
 
 int hash(int key, int maxaddr)
 {
-    return key % maxaddr;
+    short int sum = 0; // inteiro sem sinal?? uint
+    sum = key % maxaddr;
+    return (sum);
 }
 
 //******************************************************
@@ -184,8 +188,7 @@ int op_add(int key)
 
 int op_find(int key, Bucket *found_bucket)
 {
-    // int address = make_address(key, dir_prof);
-    int address = key;
+    int address = make_address(key, dir_prof);
     // Lendo o bucket no arquivo
     fseek(buckets, (dir_cell[address].bucket_ref * sizeof(Bucket)), SEEK_SET);
     fread(found_bucket, sizeof(Bucket), 1, buckets);
@@ -239,7 +242,7 @@ void bk_split(Bucket *found_bucket)
     new_bucket.cont = 0;
 
     for (int i = 0; i < TAM_MAX_BUCKET; i++)
-        new_bucket.chave[i] = -1;
+        new_bucket.chave[i] = NULL;
 
     fseek(buckets, -sizeof(Bucket), SEEK_CUR);
     int cur_bucket = ftell(buckets);
@@ -262,14 +265,13 @@ void bk_split(Bucket *found_bucket)
     {
         if ((*found_bucket).chave[i] != 0)
         {
-            // int adress = make_address((*found_bucket).chave[i], (*found_bucket).prof);
-            int adress = (*found_bucket).chave[i];
+            int adress = make_address((*found_bucket).chave[i], (*found_bucket).prof);
 
             if (adress >= new_start && adress <= new_end)
             {
                 new_bucket.chave[new_bucket.cont] = (*found_bucket).chave[i];
                 new_bucket.cont++;
-                (*found_bucket).chave[i] = -1;
+                (*found_bucket).chave[i] = NULL;
                 if (i < (*found_bucket).cont - 1)
                 {
                     for (int j = i; j < (*found_bucket).cont - 1; j++)
@@ -310,32 +312,23 @@ void dir_double()
 
 void find_new_range(Bucket *old_bucket, int *new_start, int *new_end)
 {
-    printf("******************\n");
+    int mask = 1;
 
-    // int shared_address = make_address((*old_bucket).chave[0], (*old_bucket).prof);
-    printf("oldbucket chave: %d\n", (*old_bucket).chave[0]);
-    int shared_address = (*old_bucket).chave[0];
+    int shared_address = make_address((*old_bucket).chave[0], (*old_bucket).prof);
 
     shared_address = shared_address << 1;
-    shared_address++;
-    printf("shared address: %d\n", shared_address);
+    shared_address = shared_address | mask;
 
     int bits_to_fill = dir_prof - ((*old_bucket).prof + 1);
-    printf("bits to fill: %d\n", bits_to_fill);
-    
-    // new start recebe shared address com zeros preenchido a direita
-    *new_start = shared_address << bits_to_fill;
-    printf("new start: %d\n", *new_start);
 
-    // new end recebe shared address com ums preenchido a direita
-    *new_end = shared_address << bits_to_fill;
-    int mask = 1;
+    *new_start = *new_end = shared_address;
+
     for (int i = 0; i < bits_to_fill; i++)
     {
+        *new_start = *new_start << 1;
+        *new_end = *new_end << 1;
         *new_end = *new_end | mask;
-        mask = mask << 1;
     }
-    printf("new end: %d\n", *new_end);
 }
 //******************************************************
 
