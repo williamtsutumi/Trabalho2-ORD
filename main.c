@@ -1,10 +1,10 @@
 /*
-*   Segundo Trabalho Prático - Organização e recuperação de dados
-*   Alunos:
-*   William Kenzo Tsutumi        RA: 124706
-*   Nicolas Hess de Farina Alves RA: 125623
-*   Matheus Hamada               RA: 124101
-*/
+ *   Segundo Trabalho Prático - Organização e recuperação de dados
+ *   Alunos:
+ *   William Kenzo Tsutumi        RA: 124706
+ *   Nicolas Hess de Farina Alves RA: 125623
+ *   Matheus Hamada               RA: 124101
+ */
 
 #include <stdio.h>
 #include <string.h>
@@ -12,7 +12,7 @@
 #include <math.h>
 #include <stdbool.h>
 
-#define TAM_MAX_BUCKET 2
+#define TAM_MAX_BUCKET 4
 #define TAM_MAX_DIR 1024
 #define TAM_MAX_CHAVE 255
 #define SUCCESS 1
@@ -37,8 +37,8 @@ FILE *diretorio;
 FILE *buckets;
 
 /*
-*   Funções
-*/
+ *   Funções
+ */
 void importa_chaves(char *);
 void imprime_buckets();
 void imprime_diretorio();
@@ -55,8 +55,8 @@ void inicializacao();
 void finalizacao();
 
 /*
-*   Main
-*/
+ *   Main
+ */
 int main(int argc, char *argv[])
 {
     // Importação
@@ -94,8 +94,8 @@ int main(int argc, char *argv[])
 }
 
 /*
-*   Lê as chaves do arquivo "chaves.txt" e chama a função "op_add"
-*/
+ *   Lê as chaves do arquivo "chaves.txt" e chama a função "op_add"
+ */
 void importa_chaves(char *nome_arquivo)
 {
     FILE *chaves;
@@ -116,8 +116,8 @@ void importa_chaves(char *nome_arquivo)
 }
 
 /*
-*   Lê e imprime os dados armazenados no arquivo "buckets.dat"
-*/
+ *   Lê e imprime os dados armazenados no arquivo "buckets.dat"
+ */
 void imprime_buckets()
 {
     Bucket n;
@@ -127,8 +127,8 @@ void imprime_buckets()
         if (fread(&n, sizeof(Bucket), 1, buckets) == 0)
             break;
 
-        printf("Bucket %d (Prof = %d)\n", ftell(buckets) / sizeof(Bucket) - 1,  n.prof);
-        for (int i = 0; i < n.cont; i++)
+        printf("Bucket %d (Prof = %d)\n", ftell(buckets) / sizeof(Bucket) - 1, n.prof);
+        for (int i = 0; i < TAM_MAX_BUCKET; i++)
         {
             printf("Chave [%d] = %d\n", i, n.chave[i]);
         }
@@ -137,20 +137,31 @@ void imprime_buckets()
 }
 
 /*
-*   Imprime os dados armazenados no vetor de diretório
-*/
+ *   Imprime os dados armazenados no vetor de diretório
+ */
 void imprime_diretorio()
 {
+    int num_buckets = 1;
+    int last_bucket_ref = dir_cell[0].bucket_ref;
     for (int i = 0; i < pow(2, dir_prof); i++)
     {
         printf("dir[%d] = bucket(%d)\n", i, dir_cell[i].bucket_ref);
+
+        if (dir_cell[i].bucket_ref != last_bucket_ref)
+            num_buckets++;
+
+        last_bucket_ref = dir_cell[i].bucket_ref;
     }
+    printf("\n");
+    printf("Profundidade: %d\n", dir_prof);
+    printf("Tamanho atual: %.0lf\n", pow(2, dir_prof));
+    printf("Total de buckets: %d\n", num_buckets);
     printf("\n");
 }
 
 /*
-*   Função Hash
-*/
+ *   Função Hash
+ */
 int hash(int key, int maxaddr)
 {
     short int sum = 0;
@@ -159,8 +170,8 @@ int hash(int key, int maxaddr)
 }
 
 /*
-*   Inverte os bits da função hash de acordo com a profundidade
-*/
+ *   Inverte os bits da função hash de acordo com a profundidade
+ */
 int make_address(int key, int profundidade)
 {
     int lowbit;
@@ -179,10 +190,10 @@ int make_address(int key, int profundidade)
 }
 
 /*
-*   Encontra o bucket onde a chave deve ser adicionada.
-*   Se a chave não existir no bucket a chave é repassada com o bucket encontrado
-*   para a função "bk_add_key"
-*/
+ *   Encontra o bucket onde a chave deve ser adicionada.
+ *   Se a chave não existir no bucket a chave é repassada com o bucket encontrado
+ *   para a função "bk_add_key"
+ */
 int op_add(int key)
 {
     Bucket found_bucket;
@@ -194,9 +205,9 @@ int op_add(int key)
 }
 
 /*
-*   Procura pelo bucket para a chave.
-*   Verifica se a chave existe no bucket.
-*/
+ *   Procura pelo bucket para a chave.
+ *   Verifica se a chave existe no bucket.
+ */
 int op_find(int key, Bucket *found_bucket)
 {
     int address = make_address(key, dir_prof);
@@ -253,7 +264,7 @@ void bk_split(Bucket *found_bucket)
 
     // Atribui como 0 o valor inicial das chaves de um novo bucket
     for (int i = 0; i < TAM_MAX_BUCKET; i++)
-        new_bucket.chave[i] = 0;
+        new_bucket.chave[i] = -1;
 
     long int cur_bucket = ftell(buckets) - sizeof(Bucket);
 
@@ -282,7 +293,7 @@ void bk_split(Bucket *found_bucket)
             {
                 new_bucket.chave[new_bucket.cont] = (*found_bucket).chave[i];
                 new_bucket.cont++;
-                (*found_bucket).chave[i] = 0;
+                (*found_bucket).chave[i] = -1;
                 if (i < (*found_bucket).cont - 1)
                 {
                     for (int j = i; j < (*found_bucket).cont - 1; j++)
@@ -302,9 +313,9 @@ void bk_split(Bucket *found_bucket)
 }
 
 /*
-*   Duplica o tamanho do diretório, ou seja, aumenta a profundidade do diretório.
-*   Obs.: Mantém as referências prévias.
-*/
+ *   Duplica o tamanho do diretório, ou seja, aumenta a profundidade do diretório.
+ *   Obs.: Mantém as referências prévias.
+ */
 void dir_double()
 {
     int tam_atual = pow(2, dir_prof);
@@ -325,8 +336,8 @@ void dir_double()
 }
 
 /*
-*   Encontra o intervalo de indices do diretório em que o RRN do novo bucket será atribuído.
-*/
+ *   Encontra o intervalo de indices do diretório em que o RRN do novo bucket será atribuído.
+ */
 void find_new_range(Bucket *old_bucket, int *new_start, int *new_end)
 {
     int mask = 1;
@@ -349,8 +360,8 @@ void find_new_range(Bucket *old_bucket, int *new_start, int *new_end)
 }
 
 /*
-*   Insere o RRN do novo bucket no intervalo encontrado do vetor diretório.
-*/
+ *   Insere o RRN do novo bucket no intervalo encontrado do vetor diretório.
+ */
 void dir_ins_bucket(int bucket_address, int start, int end)
 {
     for (int i = start; i <= end; i++)
