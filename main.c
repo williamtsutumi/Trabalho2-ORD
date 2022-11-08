@@ -17,6 +17,7 @@
 #define TAM_MAX_CHAVE 255
 #define SUCCESS 1
 #define FAILURE 0
+#define LOW_VALUE -1
 
 typedef struct Bucket
 {
@@ -177,7 +178,7 @@ int make_address(int key, int profundidade)
     int lowbit;
     int retval = 0;
     int mask = 1;
-    int hashval = hash(key, pow(2, profundidade));
+    int hashval = key; //hash(key, pow(2, profundidade));
 
     for (int i = 0; i < profundidade; i++)
     {
@@ -264,7 +265,7 @@ void bk_split(Bucket *found_bucket)
 
     // Atribui como 0 o valor inicial das chaves de um novo bucket
     for (int i = 0; i < TAM_MAX_BUCKET; i++)
-        new_bucket.chave[i] = -1;
+        new_bucket.chave[i] = LOW_VALUE;
 
     long int cur_bucket = ftell(buckets) - sizeof(Bucket);
 
@@ -285,7 +286,7 @@ void bk_split(Bucket *found_bucket)
     // Redistribuição de chaves
     for (int i = 0; i < TAM_MAX_BUCKET; i++)
     {
-        if ((*found_bucket).chave[i] != 0)
+        if ((*found_bucket).chave[i] != LOW_VALUE)
         {
             int adress = make_address((*found_bucket).chave[i], (*found_bucket).prof);
 
@@ -293,7 +294,7 @@ void bk_split(Bucket *found_bucket)
             {
                 new_bucket.chave[new_bucket.cont] = (*found_bucket).chave[i];
                 new_bucket.cont++;
-                (*found_bucket).chave[i] = -1;
+                (*found_bucket).chave[i] = LOW_VALUE;
                 if (i < (*found_bucket).cont - 1)
                 {
                     for (int j = i; j < (*found_bucket).cont - 1; j++)
