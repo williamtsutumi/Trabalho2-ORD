@@ -12,7 +12,7 @@
 #include <math.h>
 #include <stdbool.h>
 
-#define TAM_MAX_BUCKET 4
+#define TAM_MAX_BUCKET 5
 #define TAM_MAX_DIR 1024
 #define TAM_MAX_CHAVE 255
 #define SUCCESS 1
@@ -43,7 +43,7 @@ FILE *buckets;
 void importa_chaves(char *);
 void imprime_buckets();
 void imprime_diretorio();
-int hash(int, int);
+int hash(int);
 int make_address(int, int);
 int op_add(int);
 int op_find(int, Bucket *);
@@ -163,11 +163,9 @@ void imprime_diretorio()
 /*
  *   Função Hash
  */
-int hash(int key, int maxaddr)
+int hash(int key)
 {
-    short int sum = 0;
-    sum = key % maxaddr;
-    return (sum);
+    return (key);
 }
 
 /*
@@ -178,7 +176,7 @@ int make_address(int key, int profundidade)
     int lowbit;
     int retval = 0;
     int mask = 1;
-    int hashval = key; //hash(key, pow(2, profundidade));
+    int hashval = hash(key);
 
     for (int i = 0; i < profundidade; i++)
     {
@@ -235,10 +233,18 @@ void bk_add_key(int key, Bucket *found_bucket)
 {
     if ((*found_bucket).cont < TAM_MAX_BUCKET)
     {
-        (*found_bucket).chave[(*found_bucket).cont] = key;
-        (*found_bucket).cont++;
+        // Encontra a primeira posição vazia;
+        for (int i = 0; i < TAM_MAX_BUCKET; i++)
+        {
+            if ((*found_bucket).chave[i] == LOW_VALUE)
+            {
+                (*found_bucket).chave[i] = key;
+                (*found_bucket).cont++;
+                break;
+            }
+        }
 
-        fseek(buckets, -sizeof(Bucket), SEEK_CUR);
+        fseek(buckets, (long)-sizeof(Bucket), SEEK_CUR);
         fwrite(found_bucket, sizeof(Bucket), 1, buckets);
     }
     else
@@ -288,20 +294,13 @@ void bk_split(Bucket *found_bucket)
     {
         if ((*found_bucket).chave[i] != LOW_VALUE)
         {
-            int adress = make_address((*found_bucket).chave[i], (*found_bucket).prof);
+            int address = make_address((*found_bucket).chave[i], (*found_bucket).prof);
 
-            if (adress >= new_start && adress <= new_end)
+            if (address >= new_start && address <= new_end)
             {
                 new_bucket.chave[new_bucket.cont] = (*found_bucket).chave[i];
                 new_bucket.cont++;
                 (*found_bucket).chave[i] = LOW_VALUE;
-                if (i < (*found_bucket).cont - 1)
-                {
-                    for (int j = i; j < (*found_bucket).cont - 1; j++)
-                    {
-                        (*found_bucket).chave[j] = (*found_bucket).chave[j + 1];
-                    }
-                }
                 (*found_bucket).cont--;
             }
         }
@@ -342,8 +341,16 @@ void dir_double()
 void find_new_range(Bucket *old_bucket, int *new_start, int *new_end)
 {
     int mask = 1;
+    int shared_address;
 
-    int shared_address = make_address((*old_bucket).chave[0], (*old_bucket).prof);
+    for (int i = 0; i < TAM_MAX_BUCKET; i++)
+    {
+        if ((*old_bucket).chave[i] != LOW_VALUE)
+        {
+            shared_address = make_address((*old_bucket).chave[i], (*old_bucket).prof);
+            break;
+        }   
+    }
 
     shared_address = shared_address << 1;
     shared_address = shared_address | mask;
@@ -416,6 +423,10 @@ void inicializacao()
         Bucket buck;
         buck.prof = 0;
         buck.cont = 0;
+
+        for (int i = 0; i < TAM_MAX_BUCKET; i++)
+            buck.chave[i] = LOW_VALUE;
+
 
         fwrite(&buck, sizeof(Bucket), 1, buckets);
 
