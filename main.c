@@ -12,11 +12,12 @@ Matheus Hamada               RA: 124101
 #include <math.h>
 #include <stdbool.h>
 
-#define TAM_MAX_BUCKET 2
+#define TAM_MAX_BUCKET 5
 #define TAM_MAX_DIR 1024
 #define TAM_MAX_CHAVE 255
 #define SUCCESS 1
 #define FAILURE 0
+#define LOW_VALUE -1
 
 typedef struct Bucket
 {
@@ -33,7 +34,7 @@ typedef struct DIR_CELL
 void importa_chaves(char *);
 void imprime_buckets();
 void imprime_diretorio();
-int hash(int, int);
+int hash(int);
 int make_address(int, int);
 int op_add(int);
 int op_find(int, Bucket *found_bucket);
@@ -123,8 +124,8 @@ void imprime_buckets()
         if (fread(&n, sizeof(Bucket), 1, buckets) == 0)
             break;
 
-        printf("Bucket %d (Prof = %d)\n", ftell(buckets) / sizeof(Bucket) - 1,  n.prof);
-        for (int i = 0; i < n.cont; i++)
+        printf("Bucket %d (Prof = %d)\n", ftell(buckets) / sizeof(Bucket) - 1, n.prof);
+        for (int i = 0; i < TAM_MAX_BUCKET; i++)
         {
             printf("Chave [%d] = %d\n", i, n.chave[i]);
         }
@@ -146,11 +147,9 @@ void imprime_diretorio()
 
 //******************************************************
 
-int hash(int key, int maxaddr)
+int hash(int key)
 {
-    short int sum = 0; // inteiro sem sinal?? uint
-    sum = key % maxaddr;
-    return (sum);
+    return (key);
 }
 
 //******************************************************
@@ -160,7 +159,7 @@ int make_address(int key, int profundidade)
     int lowbit;
     int retval = 0;
     int mask = 1;
-    int hashval = hash(key, pow(2, profundidade));
+    int hashval = key; // hash(key, pow(2, profundidade));
 
     for (int i = 0; i < profundidade; i++)
     {
@@ -192,9 +191,9 @@ int op_find(int key, Bucket *found_bucket)
     // Lendo o bucket no arquivo
     fseek(buckets, (dir_cell[address].bucket_ref * sizeof(Bucket)), SEEK_SET);
     fread(found_bucket, sizeof(Bucket), 1, buckets);
+    
     // Procurando pela chave
-
-    for (int i = 0; i < (*found_bucket).cont; i++)
+    for (int i = 0; i < TAM_MAX_BUCKET; i++)
     {
         if ((*found_bucket).chave[i] == key)
             return SUCCESS;
@@ -203,7 +202,6 @@ int op_find(int key, Bucket *found_bucket)
 }
 
 //******************************************************
-
 /**
  *  Adiciona key em found_bucket, caso haja espaço
  *  Caso contrário, nao sei
@@ -215,10 +213,18 @@ void bk_add_key(int key, Bucket *found_bucket)
 {
     if ((*found_bucket).cont < TAM_MAX_BUCKET)
     {
-        (*found_bucket).chave[(*found_bucket).cont] = key;
-        (*found_bucket).cont++;
-
-        fseek(buckets, -sizeof(Bucket), SEEK_CUR);
+        // Encontra a primeira posição vazia;
+        for (int i = 0; i < TAM_MAX_BUCKET; i++)
+        {
+            if ((*found_bucket).chave[i] == LOW_VALUE)
+            {
+                (*found_bucket).chave[i] = key;
+                (*found_bucket).cont++;
+                break;
+            }
+        }
+        
+        fseek(buckets, (long)-sizeof(Bucket), SEEK_CUR);
         fwrite(found_bucket, sizeof(Bucket), 1, buckets);
     }
     else
@@ -242,10 +248,9 @@ void bk_split(Bucket *found_bucket)
     new_bucket.cont = 0;
 
     for (int i = 0; i < TAM_MAX_BUCKET; i++)
-        new_bucket.chave[i] = NULL;
+        new_bucket.chave[i] = LOW_VALUE;
 
-    fseek(buckets, -sizeof(Bucket), SEEK_CUR);
-    int cur_bucket = ftell(buckets);
+    long int cur_bucket = ftell(buckets) -sizeof(Bucket);
 
     fseek(buckets, 0, SEEK_END);
 
@@ -263,153 +268,182 @@ void bk_split(Bucket *found_bucket)
 
     for (int i = 0; i < TAM_MAX_BUCKET; i++)
     {
-        if ((*found_bucket).chave[i] != 0)
+        if ((*found_bucket).chave[i] != LOW_VALUE)
         {
-            int adress = make_address((*found_bucket).chave[i], (*found_bucket).prof);
+            int address = make_address((*found_bucket).chave[i], (*found_bucket).prof);
 
-            if (adress >= new_start && adress <= new_end)
+            if (address >= new_start && address <= new_end)
             {
                 new_bucket.chave[new_bucket.cont] = (*found_bucket).chave[i];
                 new_bucket.cont++;
-                (*found_bucket).chave[i] = NULL;
-                if (i < (*found_bucket).cont - 1)
-                {
-                    for (int j = i; j < (*found_bucket).cont - 1; j++)
-                    {
-                        (*found_bucket).chave[j] = (*found_bucket).chave[j + 1];
-                    }
-                }
+                (*found_bucket).chave[i] = LOW_VALUE;
                 (*found_bucket).cont--;
             }
         }
     }
 
-    fwrite(&new_bucket, sizeof(Bucket), 1, buckets);
+        // for (int i = 0; i < TAM_MAX_BUCKET; i++)
+        // {
+        //     if ((*found_bucket).chave[i] != 0)
+        //     {
+        //         int adress = make_address((*found_bucket).chave[i], (*found_bucket).prof);
 
-    fseek(buckets, cur_bucket, SEEK_SET);
-    fwrite(found_bucket, sizeof(Bucket), 1, buckets);
-}
+        //         if (adress >= new_start && adress <= new_end)
+        //         {
+        //             new_bucket.chave[new_bucket.cont] = (*found_bucket).chave[i];
+        //             new_bucket.cont++;
+        //             (*found_bucket).chave[i] = NULL;
+        //             if (i < (*found_bucket).cont - 1)
+        //             {
+        //                 for (int j = i; j < (*found_bucket).cont - 1; j++)
+        //                 {
+        //                     (*found_bucket).chave[j] = (*found_bucket).chave[j + 1];
+        //                 }
+        //             }
+        //             (*found_bucket).cont--;
+        //         }
+        //     }
+        // }
 
-void dir_double()
-{
-    int tam_atual = pow(2, dir_prof);
-    int tam_novo = tam_atual * 2;
-    // DIR_CELL *new_dir_cell = (DIR_CELL *)malloc(sizeof(DIR_CELL) * tam_novo);
-    DIR_CELL new_dir_cell[tam_novo];
+        fwrite(&new_bucket, sizeof(Bucket), 1, buckets);
 
-    for (int i = 0; i < tam_atual; i++)
-    {
-        new_dir_cell[2 * i].bucket_ref = dir_cell[i].bucket_ref;
-        new_dir_cell[2 * i + 1].bucket_ref = dir_cell[i].bucket_ref;
+        fseek(buckets, cur_bucket, SEEK_SET);
+        fwrite(found_bucket, sizeof(Bucket), 1, buckets);
     }
-    // dir_cell = new_dir_cell;
-    for (int i = 0; i < tam_novo; i++)
+
+    void dir_double()
     {
-        dir_cell[i].bucket_ref = new_dir_cell[i].bucket_ref;
-    }
-    dir_prof++;
-}
+        int tam_atual = pow(2, dir_prof);
+        int tam_novo = tam_atual * 2;
+        DIR_CELL new_dir_cell[tam_novo];
 
-void find_new_range(Bucket *old_bucket, int *new_start, int *new_end)
-{
-    int mask = 1;
-
-    int shared_address = make_address((*old_bucket).chave[0], (*old_bucket).prof);
-
-    shared_address = shared_address << 1;
-    shared_address = shared_address | mask;
-
-    int bits_to_fill = dir_prof - ((*old_bucket).prof + 1);
-
-    *new_start = *new_end = shared_address;
-
-    for (int i = 0; i < bits_to_fill; i++)
-    {
-        *new_start = *new_start << 1;
-        *new_end = *new_end << 1;
-        *new_end = *new_end | mask;
-    }
-}
-//******************************************************
-
-void dir_ins_bucket(int bucket_address, int start, int end)
-{
-    for (int i = start; i <= end; i++)
-    {
-        dir_cell[i].bucket_ref = bucket_address;
-    }
-}
-
-/*
- *   Inicializa os arquivos dir.dat e buckets.dat
- *   Se existir dir.dat -> importa o vetor de diretórios(dir_cell)
- *   Senão, cria um vetor novo e os arquivos dir.dat e buckets.dat
- */
-void inicializacao()
-{
-    diretorio = fopen("dir.dat", "rb+");
-
-    if (diretorio != NULL)
-    {
-        buckets = fopen("buckets.dat", "rb+");
-
-        if (buckets == NULL)
+        for (int i = 0; i < tam_atual; i++)
         {
-            fprintf(stderr, ">> Erro: Falha na leitura do arquivo: buckets.dat\n");
-            exit(1);
+            new_dir_cell[2 * i].bucket_ref = dir_cell[i].bucket_ref;
+            new_dir_cell[2 * i + 1].bucket_ref = dir_cell[i].bucket_ref;
+        }
+        // dir_cell = new_dir_cell;
+        for (int i = 0; i < tam_novo; i++)
+        {
+            dir_cell[i].bucket_ref = new_dir_cell[i].bucket_ref;
+        }
+        dir_prof++;
+    }
+
+    void find_new_range(Bucket * old_bucket, int *new_start, int *new_end)
+    {
+        int mask = 1;
+        int shared_address;
+
+        for (int i = 0; i < TAM_MAX_BUCKET; i++)
+        {
+            if ((*old_bucket).chave[i] != LOW_VALUE)
+            {
+                shared_address = make_address((*old_bucket).chave[i], (*old_bucket).prof);
+                break;
+            }   
         }
 
-        int i;
+        shared_address = shared_address << 1;
+        shared_address = shared_address | mask;
+
+        int bits_to_fill = dir_prof - ((*old_bucket).prof + 1);
+
+        *new_start = *new_end = shared_address;
+
+        for (int i = 0; i < bits_to_fill; i++)
+        {
+            *new_start = *new_start << 1;
+            *new_end = *new_end << 1;
+            *new_end = *new_end | mask;
+        }
+    }
+    //******************************************************
+
+    void dir_ins_bucket(int bucket_address, int start, int end)
+    {
+        for (int i = start; i <= end; i++)
+        {
+            dir_cell[i].bucket_ref = bucket_address;
+        }
+    }
+
+    /*
+     *   Inicializa os arquivos dir.dat e buckets.dat
+     *   Se existir dir.dat -> importa o vetor de diretórios(dir_cell)
+     *   Senão, cria um vetor novo e os arquivos dir.dat e buckets.dat
+     */
+    void inicializacao()
+    {
+        diretorio = fopen("dir.dat", "rb+");
+
+        if (diretorio != NULL)
+        {
+            buckets = fopen("buckets.dat", "rb+");
+
+            if (buckets == NULL)
+            {
+                fprintf(stderr, ">> Erro: Falha na leitura do arquivo: buckets.dat\n");
+                exit(1);
+            }
+
+            int i;
+
+            fseek(diretorio, 0, SEEK_SET);
+
+            for (i = 0; !feof(diretorio); i++)
+            {
+                fread(&dir_cell[i], sizeof(dir_cell[i]), 1, diretorio);
+            }
+
+            i--;
+
+            dir_prof = log2(i);
+        }
+        else
+        {
+            DIR_CELL celula;
+            celula.bucket_ref = 0;
+
+            dir_cell[0] = celula;
+
+            buckets = fopen("buckets.dat", "wb+");
+            fseek(buckets, 0, SEEK_SET);
+
+            Bucket buck;
+            buck.prof = 0;
+            buck.cont = 0;
+
+            for (int i = 0; i < TAM_MAX_BUCKET; i++)
+            {
+                buck.chave[i] = LOW_VALUE;
+            }
+            
+
+            fwrite(&buck, sizeof(Bucket), 1, buckets);
+
+            diretorio = fopen("dir.dat", "wb+");
+        }
+    }
+
+    //******************************************************
+
+    /*
+     *   Escreve o vetor de diretórios(dir_cell) no arquivo dir.dat
+     */
+    void finalizacao()
+    {
+        int dir_cont = pow(2, dir_prof);
 
         fseek(diretorio, 0, SEEK_SET);
 
-        for (i = 0; !feof(diretorio); i++)
+        int i;
+
+        for (i = 0; i < dir_cont; i++)
         {
-            fread(&dir_cell[i], sizeof(dir_cell[i]), 1, diretorio);
+            fwrite(&dir_cell[i], sizeof(DIR_CELL), 1, diretorio);
         }
 
-        i--;
-
-        dir_prof = log2(i);
+        fclose(diretorio);
+        fclose(buckets);
     }
-    else
-    {
-        DIR_CELL celula;
-        celula.bucket_ref = 0;
-
-        dir_cell[0] = celula;
-
-        buckets = fopen("buckets.dat", "wb+");
-        fseek(buckets, 0, SEEK_SET);
-
-        Bucket buck;
-        buck.prof = 0;
-        buck.cont = 0;
-
-        fwrite(&buck, sizeof(Bucket), 1, buckets);
-
-        diretorio = fopen("dir.dat", "wb+");
-    }
-}
-
-//******************************************************
-
-/*
- *   Escreve o vetor de diretórios(dir_cell) no arquivo dir.dat
- */
-void finalizacao()
-{
-    int dir_cont = pow(2, dir_prof);
-
-    fseek(diretorio, 0, SEEK_SET);
-
-    int i;
-
-    for (i = 0; i < dir_cont; i++)
-    {
-        fwrite(&dir_cell[i], sizeof(DIR_CELL), 1, diretorio);
-    }
-
-    fclose(diretorio);
-    fclose(buckets);
-}
